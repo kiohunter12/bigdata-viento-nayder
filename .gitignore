@@ -1,6 +1,7 @@
 pyspark/.env
 pyspark/sesiones/artifacts/
 pyspark/sesiones/data/*.csv
+pyspark/sesiones/data/raw/
 pyspark/sesiones/**/.ipynb_checkpoints/
 pyspark/sesiones/spark-warehouse/
 __pycache__/
