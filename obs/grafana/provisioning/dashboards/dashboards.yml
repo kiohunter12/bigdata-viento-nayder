@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: viento
+    folder: Viento Juliaca
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
