@@ -1,0 +1,26 @@
+site_name: ClimateRisk Andes · Viento
+site_description: Pipeline Lambda de viento en Juliaca (Big Data 2026-2, UPeU)
+site_author: Efrain Nayder Arce Mayta
+repo_url: https://github.com/kiohunter12/bigdata-viento-nayder
+docs_dir: docs
+theme:
+  name: material
+  language: es
+  palette:
+    - scheme: default
+      primary: blue grey
+      toggle: {icon: material/brightness-7, name: Modo oscuro}
+    - scheme: slate
+      primary: blue grey
+      toggle: {icon: material/brightness-4, name: Modo claro}
+  features: [navigation.sections, content.code.copy]
+markdown_extensions:
+  - tables
+  - admonition
+  - pymdownx.superfences
+nav:
+  - Inicio: index.md
+  - Brief: brief.md
+  - Producto U1: u1-producto.md
+  - Producto U2: u2-producto.md
+  - Contratos de eventos: contratos.md

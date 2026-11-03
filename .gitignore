@@ -5,3 +5,4 @@ pyspark/sesiones/**/.ipynb_checkpoints/
 pyspark/sesiones/spark-warehouse/
 __pycache__/
 *.pyc
+site/
