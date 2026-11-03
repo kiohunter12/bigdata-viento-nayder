@@ -1,26 +1,83 @@
 site_name: ClimateRisk Andes · Viento
-site_description: Pipeline Lambda de viento en Juliaca (Big Data 2026-2, UPeU)
+site_description: Pipeline Big Data Lambda para anticipar el viento fuerte en el Altiplano de Juliaca
 site_author: Efrain Nayder Arce Mayta
+site_url: https://kiohunter12.github.io/bigdata-viento-nayder/
 repo_url: https://github.com/kiohunter12/bigdata-viento-nayder
+repo_name: kiohunter12/bigdata-viento-nayder
 docs_dir: docs
+copyright: Big Data 2026-2 · Universidad Peruana Unión · Efrain Nayder Arce Mayta
+
 theme:
   name: material
   language: es
+  icon:
+    logo: material/weather-windy
+    repo: fontawesome/brands/github
+  favicon: img/favicon.svg
   palette:
-    - scheme: default
-      primary: blue grey
-      toggle: {icon: material/brightness-7, name: Modo oscuro}
-    - scheme: slate
-      primary: blue grey
-      toggle: {icon: material/brightness-4, name: Modo claro}
-  features: [navigation.sections, content.code.copy]
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-night, name: Cambiar a modo oscuro}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-sunny, name: Cambiar a modo claro}
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.instant
+    - navigation.footer
+    - toc.follow
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kiohunter12/bigdata-viento-nayder
+      name: Repositorio del proyecto
+  generator: false
+
 markdown_extensions:
   - tables
   - admonition
-  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 nav:
   - Inicio: index.md
   - Brief: brief.md
-  - Producto U1: u1-producto.md
-  - Producto U2: u2-producto.md
+  - Producto U1 · Batch: u1-producto.md
+  - Producto U2 · Streaming: u2-producto.md
   - Contratos de eventos: contratos.md
