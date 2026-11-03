@@ -1,0 +1,47 @@
+name: lambda26-uso-viento
+
+# Contenedor de ingesta de la dimensión VIENTO (Nayder).
+# Mismo patrón que uso-atmos del curso, pero la fuente es REAL:
+# la API Open-Meteo (viento actual de Juliaca, Puno y Lampa).
+
+services:
+  uso-viento:
+    build: .
+    container_name: lambda26-uso-viento
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    command: sleep infinity
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_VIENTO: viento-eventos
+      KAFKA_TOPIC_ALERTAS: alerta-eventos
+      # Broker MQTT propio (contenedor mosquitto). El público test.mosquitto.org
+      # no responde desde la red de casa/universidad (puerto 1883 bloqueado).
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_TOPIC: lambda26/viento/nayder/lecturas
+      # Cada cuántos segundos se consulta la API (Open-Meteo actualiza cada 15 min)
+      INTERVALO_S: "60"
+      # Umbral operativo de ráfaga (km/h) — ajústalo con el p90 que sale en el notebook U1
+      UMBRAL_RAFAGA_KMH: "46"
+    depends_on:
+      - mosquitto
+    networks:
+      - lambda26-kafka-net
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: lambda26-mosquitto
+    restart: unless-stopped
+    ports:
+      - "41883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - lambda26-kafka-net
+
+networks:
+  lambda26-kafka-net:
+    external: true
+    name: lambda26-kafka-net
