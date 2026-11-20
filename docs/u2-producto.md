@@ -16,10 +16,10 @@ se reutiliza para entrenar el modelo de S10; la misma API pasa de `archive` a `f
 ## 1. Alcance por sesión
 | Sesión | Capacidad | Implementación propia |
 |---|---|---|
-| S6 | Eventos de negocio | `suscripcion.creada`, `alerta.emitida`, `alerta.notificada` en `alerta-eventos` |
+| S6 | Eventos de negocio | `suscripcion.creada`, `alerta.emitida`, `alerta.notificada` en `alerta-eventos` · aviso real por **Telegram** (`consumer_alertas.py`, bot `@wayra_alerta_juliaca_bot`) |
 | S7 | IoT real | Open-Meteo → MQTT → bridge → `viento-eventos` (3 particiones, key sensorId), validación esquema/rango/alerta |
 | S8 | Streaming | ventana tumbling 1 min, deslizante 5/1 min, watermark 2 min, tardío descartado, dedup (sensorId, obsTime), checkpoint |
-| S9 | Observabilidad y costo | kafka-exporter + métricas Spark por micro-lote al Pushgateway, 21 paneles, 6 alertas, plantilla de costos |
+| S9 | Observabilidad y costo | kafka-exporter + métricas Spark por micro-lote al Pushgateway, 29 paneles en 5 filas, 6 alertas, plantilla de costos |
 | S10 | Serie de tiempo | velocidad t+1h · persistencia vs LR vs RF · split cronológico · inferencia en vivo |
 | S11 | BI/ML | KPIs del flujo + KPIs U1 + real vs predicción en Grafana + MAE en producción |
 | S12 | Integración | demo en vivo (abajo) |
@@ -89,8 +89,8 @@ se reutiliza para entrenar el modelo de S10; la misma API pasa de `archive` a `f
     | Lampa | 9 | 4.19 | 4.06 | **no** (+3 %) |
     | **Total** | **27** | **3.65** | **3.92** | **sí (−7 %)** |
 
-  - Lectura honesta: el modelo mejora a la persistencia en producción, pero **menos que en el test** (MAE test 2.25 → producción 3.65). Causas: (1) entrenado solo con ERA5 de Juliaca y aplicado a Puno y Lampa; (2) en vivo recibe el pronóstico `current` (otro modelo, no ERA5); (3) en Lampa, de noche, el viento real cae a 0.3–0.7 km/h y el modelo predice 4–5 km/h → **sesgo hacia arriba en calma**. Muestra pequeña (3 h): conclusión preliminar.
-  - Mejora propuesta: reentrenar por estación (o con `sensorId` como feature) y con datos de pronóstico histórico en vez de ERA5.
+  - Lectura honesta: el modelo mejora a la persistencia en producción, pero **menos que en el test** (MAE test 2.25 → producción 3.65). Causas: (1) entrenado solo con el histórico de Juliaca y aplicado a Puno y Lampa; (2) en vivo recibe el pronóstico `current` (otro modelo, no el del archivo); (3) en Lampa, de noche, el viento real cae a 0.3–0.7 km/h y el modelo predice 4–5 km/h → **sesgo hacia arriba en calma**. Muestra pequeña (3 h): conclusión preliminar.
+  - Mejora propuesta: reentrenar por estación (o con `sensorId` como feature) y con datos de pronóstico histórico en vez del archivo. **Nota:** la alerta no usa la predicción: se dispara con la ráfaga observada (≥ 46 amarilla, ≥ 57.5 naranja).
   - **Problema de archivos pequeños visto en vivo:** tras ~3 h de streaming con trigger de 10 s, `viento_eventos_observabilidad` tenía **2 172 archivos** y `predicciones_stream_s11` **682** → la lectura falló por falta de memoria (`Cannot allocate memory`). Se resolvió compactando (`coalesce(1)`): 2 172 → 1 y 682 → 1. En producción: compactación programada (p. ej. cada hora o por día) o trigger más largo.
 
 ## 4. Secuencia de demo S12 (3 min individuales)

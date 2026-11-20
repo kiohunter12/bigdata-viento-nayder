@@ -6,7 +6,7 @@ hide:
 
 <div class="ca-hero" markdown>
 
-# ClimateRisk Andes · Viento
+# Wayra Alerta
 
 Pipeline Big Data **Lambda** para anticipar el viento fuerte en el Altiplano de Juliaca.<br>
 **Efrain Nayder Arce Mayta** · Big Data 2026-2 · Universidad Peruana Unión
@@ -23,7 +23,7 @@ Pipeline Big Data **Lambda** para anticipar el viento fuerte en el Altiplano de 
 ## Resultados en una mirada
 
 <div class="ca-kpis">
-  <div class="ca-kpi"><div class="v">147 432</div><div class="l">horas de histórico procesadas (2010 → 2026)</div></div>
+  <div class="ca-kpi"><div class="v">147 456</div><div class="l">horas de histórico procesadas (2010 → 2026)</div></div>
   <div class="ca-kpi"><div class="v">46 km/h</div><div class="l">umbral de ráfaga fuerte (p90)</div></div>
   <div class="ca-kpi"><div class="v">+15.5 %</div><div class="l">mejora del modelo a 1 h sobre la persistencia</div></div>
   <div class="ca-kpi"><div class="v">3.65</div><div class="l">MAE en producción (km/h) vs 3.92 de persistencia</div></div>
@@ -36,7 +36,7 @@ Pipeline Big Data **Lambda** para anticipar el viento fuerte en el Altiplano de 
 ```mermaid
 flowchart LR
   subgraph B["Capa batch · U1"]
-    A1["Open-Meteo<br/>archive ERA5"] --> A2["CSV horario<br/>Bronze"]
+    A1["Open-Meteo<br/>archive (histórico)"] --> A2["CSV horario<br/>Bronze"]
     A2 --> A3["PySpark<br/>Silver diario"]
     A3 --> A4[("Gold Parquet<br/>partitionBy anio")]
     A4 --> A5["MLlib<br/>ráfaga · día fuerte"]
@@ -46,7 +46,7 @@ flowchart LR
     C2 --> C3["Bridge"] --> C4[["Kafka<br/>viento-eventos"]]
     C4 --> C5["Spark Structured<br/>Streaming"]
     C4 --> C6["Alertador"] --> C7[["Kafka<br/>alerta-eventos"]]
-    C7 --> C8["Notificaciones"]
+    C7 --> C8["Notificaciones"] --> C9["Telegram"]
   end
   A4 -. "umbral p90" .-> C6
   A5 -. "modelo +1 h" .-> C5

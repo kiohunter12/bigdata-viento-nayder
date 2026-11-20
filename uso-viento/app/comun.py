@@ -18,7 +18,7 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "lambda26/viento/nayder/lecturas")
 
 INTERVALO_S = int(os.getenv("INTERVALO_S", "60"))
-UMBRAL_RAFAGA_KMH = float(os.getenv("UMBRAL_RAFAGA_KMH", "40"))
+UMBRAL_RAFAGA_KMH = float(os.getenv("UMBRAL_RAFAGA_KMH", "46"))  # p90 de la U1 (umbral_viento.json)
 
 # Tres "sensores" = tres puntos reales del Altiplano consultados en Open-Meteo.
 # Juliaca usa las mismas coordenadas que el histórico de la Unidad I.

@@ -1,6 +1,6 @@
 """Productor de EVENTOS DE NEGOCIO (S6): `suscripcion.creada`.
 
-Caso: un productor agrícola (p. ej. de chuño o pastos) registra su parcela
+Caso: un productor agrícola (p. ej. de cultivos o pastos) registra su parcela
 en una estación para recibir avisos de viento fuerte. Es un evento de
 negocio (lo dispara una persona, baja frecuencia), a diferencia de
 `viento.lectura` (lo dispara un dispositivo, alta frecuencia).

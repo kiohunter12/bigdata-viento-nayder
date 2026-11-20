@@ -25,8 +25,11 @@ services:
       INTERVALO_S: "60"
       # Umbral operativo de ráfaga (km/h) — ajústalo con el p90 que sale en el notebook U1
       UMBRAL_RAFAGA_KMH: "46"
+      # Bot de Telegram para los avisos (opcional). El token va en uso-viento/.env, nunca en git.
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
     networks:
       - lambda26-kafka-net
 
@@ -38,6 +41,13 @@ services:
       - "41883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    # S14 · hardening: sano cuando acepta una suscripción
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/version' -C 1 -W 3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
     networks:
       - lambda26-kafka-net
 

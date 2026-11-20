@@ -7,3 +7,7 @@ pyspark/sesiones/spark-warehouse/
 __pycache__/
 *.pyc
 site/
+videos/
+uso-viento/.env
+uso-viento/app/telegram_chats.json
+Claude outputs/

@@ -1,14 +1,14 @@
 # Brief técnico-analítico
 
 !!! abstract "Resumen ejecutivo"
-    **ClimateRisk Andes · Viento** es un sistema Big Data con arquitectura **Lambda** que anticipa el **viento fuerte** en el Altiplano de Juliaca.
-    La capa **batch** (U1) procesa 16 años de datos horarios con PySpark y define qué es un día de viento fuerte (**≥ 46 km/h**, percentil 90).
-    La capa **speed** (U2) recibe el viento real cada 15 segundos por MQTT y Kafka, predice la **próxima hora** con un modelo Random Forest y **avisa a los productores suscritos** cuando la ráfaga supera el umbral.
+    **Wayra Alerta** (antes *ClimateRisk Andes · Viento*) es un sistema Big Data con arquitectura **Lambda** que anticipa el **viento fuerte** en el Altiplano de Juliaca.
+    La capa **batch** (U1) procesa 17 años de datos horarios (2010–2026) con PySpark y define qué es un día de viento fuerte (**≥ 46 km/h**, percentil 90).
+    La capa **speed** (U2) recibe el viento real cada 15 segundos por MQTT y Kafka, predice la **próxima hora** con un modelo Random Forest y **avisa a los suscritos** (evento de negocio y mensaje de Telegram) cuando la ráfaga supera el umbral.
     La **integración** (U3) empaqueta todo para que cualquier persona lo levante, lo verifique y lo opere siguiendo esta documentación.
 
 | Campo | Valor |
 |---|---|
-| Versión del brief | **v3** · actualizado en noviembre de 2026 (ver [historial](#10-historial-de-versiones)) |
+| Versión del brief | **v4** · actualizado el 15 de noviembre de 2026 (ver [historial](#10-historial-de-versiones)) |
 | Estado | U1 ✅ entregado · U2 ✅ entregado · U3 🛠️ en construcción |
 | Documentos relacionados | [Producto U1](u1-producto.md) · [Producto U2](u2-producto.md) · [Contratos de eventos](contratos.md) |
 
@@ -43,10 +43,10 @@
     **¿Cuándo y con qué intensidad sopla el viento fuerte en el Altiplano de Juliaca, y cuánto viento habrá en la próxima hora para avisar a tiempo a los productores?**
 
 Nombre del proyecto
-:   ClimateRisk Andes · Viento
+:   Wayra Alerta (*wayra*: viento en quechua y aimara) · antes ClimateRisk Andes · Viento
 
 Problema que resuelve
-:   En el Altiplano (Juliaca, Puno y Lampa) el viento fuerte rompe coberturas, daña cultivos y afecta el secado del chuño. Los productores no tienen un aviso local y oportuno: se enteran cuando el viento ya llegó.
+:   En el Altiplano (Juliaca, Puno y Lampa) el viento fuerte rompe coberturas, daña cultivos y afecta las labores al aire libre. Los productores no tienen un aviso local y oportuno: se enteran cuando el viento ya llegó.
 
 Dominio de datos
 :   Meteorología aplicada al agro: velocidad, dirección y ráfaga del viento a 10 m, más temperatura, humedad, presión y nubosidad.
@@ -66,7 +66,7 @@ Usuarios y actores
 ```mermaid
 flowchart LR
   subgraph Fuente
-    A1["Open-Meteo<br/>/archive (ERA5)"]
+    A1["Open-Meteo<br/>/archive (histórico)"]
     A2["Open-Meteo<br/>/forecast current"]
   end
   subgraph Batch["Capa batch · U1"]
@@ -86,7 +86,7 @@ flowchart LR
 
 | Criterio | Lambda (elegida) | Kappa (descartada) |
 |---|---|---|
-| Recalcular 16 años de histórico cuando cambia una regla | Se hace en batch, una vez | Habría que reprocesar todo por Kafka |
+| Recalcular 17 años de histórico cuando cambia una regla | Se hace en batch, una vez | Habría que reprocesar todo por Kafka |
 | Reutilizar el umbral y el modelo en tiempo real | El batch los produce y la capa speed los consume | Mezcla entrenamiento e inferencia en el mismo flujo |
 | Complejidad | Dos caminos que mantener | Un solo camino |
 | Encaje con el curso | U1 batch y U2 streaming por separado | No separa las unidades |
@@ -95,7 +95,7 @@ flowchart LR
 
 === ":material-database: Batch"
 
-    **API Open-Meteo · Historical Weather (reanálisis ERA5 de Copernicus/ECMWF)**
+    **API Open-Meteo · Historical Weather (*Best Match*: reanálisis ERA5 + ECMWF IFS desde 2017)**
 
     | Campo | Valor |
     |---|---|
@@ -112,10 +112,10 @@ flowchart LR
     | Campo | Valor |
     |---|---|
     | Puntos | Juliaca, Puno y Lampa (3 sensores virtuales) |
-    | Frecuencia de consulta | Cada 15 s (configurable con `INTERVALO_S`) |
+    | Frecuencia de consulta | Cada 60 s por defecto · 15 s en las demos (`INTERVALO_S`) |
     | Camino | productor → MQTT (Mosquitto propio) → puente → Kafka `viento-eventos` |
     | Eventos IoT | `viento.lectura` v1 · key = `sensorId` · 3 particiones |
-    | Eventos de negocio | `suscripcion.creada`, `alerta.emitida`, `alerta.notificada` en `alerta-eventos` |
+    | Eventos de negocio | `suscripcion.creada`, `alerta.emitida`, `alerta.notificada` en `alerta-eventos` · aviso por Telegram |
 
 !!! note "Mismo origen, dos momentos"
     Es la misma API vista en dos momentos: el histórico acumulado (batch) y la lectura del momento (streaming). No es una estación física: es el valor de un modelo meteorológico para la celda de cuadrícula de cada ciudad, por eso se trata como un **sensor virtual**.
@@ -157,8 +157,8 @@ flowchart LR
 | Relación con la pregunta central | Responde la primera mitad: **cuándo y con qué intensidad**. Además fija qué significa "fuerte" para todo el sistema: umbral p90 = **46 km/h** |
 | Indicadores | % de días fuertes por mes · hora pico · rumbo dominante · ráfaga máxima predicha · probabilidad de día fuerte |
 | Valor del modelo | Clasificación de día fuerte: **LogReg con pesos AUC 0.775** vs persistencia 0.755, recall 67 % · regresión de la ráfaga diaria: RMSE 9.15 vs 9.45 (+3.1 %) |
-| Decisión que habilita | Programar labores sensibles (coberturas, secado de chuño, fumigación) en los meses y horas de menos viento |
-| Instrumento batch | Open-Meteo archive (ERA5): 8 variables horarias, esquema explícito `StructType` |
+| Decisión que habilita | Programar labores sensibles (coberturas, secado, fumigación) en los meses y horas de menos viento |
+| Instrumento batch | Open-Meteo archive (Best Match): 8 variables horarias, esquema explícito `StructType` |
 | Instrumento streaming | No aplica |
 | Modelo | Regresión (LinearRegression, RandomForest) y clasificación (LogisticRegression con pesos de clase) en Spark MLlib · split cronológico 80/20 · se ejecuta una vez |
 | Salida | Notebook `01_viento_batch_nayder.ipynb` · Gold Parquet particionado por año (17 particiones) · `umbral_viento.json` · `modelo_rafaga_u1` y `modelo_dia_fuerte_u1` |
@@ -180,8 +180,8 @@ flowchart LR
 | Relación con la pregunta central | Responde la segunda mitad: **cuánto viento habrá en la próxima hora para avisar a tiempo**, usando el umbral calculado en la U1 |
 | Indicadores | Velocidad real vs +1 h · alertas emitidas y notificadas · MAE en producción · latencia, validez y edad del dato |
 | Valor del modelo | RandomForest **RMSE 3.16** vs persistencia 3.75 (+15.5 %, R² 0.66) en test · **MAE en producción 3.65 vs 3.92** (7 % mejor) |
-| Decisión que habilita | Avisar a los productores suscritos antes de que llegue el viento fuerte |
-| Instrumento batch | Histórico horario ERA5 de la U1 (entrenamiento del modelo) |
+| Decisión que habilita | Avisar a los suscritos (Telegram) cuando la ráfaga real supera el umbral |
+| Instrumento batch | Histórico horario de la U1 (entrenamiento del modelo) |
 | Instrumento streaming | Kafka `viento-eventos` (contrato `viento.lectura` v1, IoT desde Open-Meteo `current`) y `alerta-eventos` (eventos de negocio) |
 | Modelo | Serie de tiempo: velocidad en t + 1 h con RandomForestRegressor (MLlib), entrenado una vez y aplicado en vivo a cada micro-lote |
 | Salida | Tablero de Grafana *Viento Juliaca — Pipeline U2* en vivo: infraestructura, streaming, KPIs U1, predicción y alertas de negocio |
@@ -257,7 +257,7 @@ Detalle completo en [Contratos de eventos](contratos.md).
 !!! failure "Qué NO cubre"
     - Sensores físicos propios: la fuente es un modelo meteorológico, no un anemómetro
     - Pronósticos a más de 1 hora
-    - Envío real de SMS o correo (la notificación es un evento en Kafka)
+    - Envío por SMS o correo (el aviso sale por Telegram a quien se suscribe al bot)
     - Cálculo de pérdidas económicas o recomendaciones por cultivo
     - Otras variables de riesgo (heladas, lluvia)
 
@@ -270,7 +270,9 @@ Detalle completo en [Contratos de eventos](contratos.md).
 | La API cambia, limita peticiones o se cae | Sin datos nuevos | Reintentos, alerta "edad del dato > 30 min" y Kafka guarda lo ya recibido |
 | El broker MQTT público no responde | Sin ingesta IoT | Broker Mosquitto propio en Docker |
 | La fuente repite lecturas (actualiza cada 15 min) | Datos duplicados | Deduplicación por `(sensorId, obsTime)` y alertador idempotente |
-| El modelo se entrena con ERA5 y en vivo recibe otro modelo | Error mayor en producción | Auditoría del MAE real; mejora propuesta: un modelo por estación |
+| El modelo se entrena con el archivo histórico y en vivo recibe el pronóstico | Error mayor en producción | Auditoría del MAE real; mejora propuesta: un modelo por estación |
+| La serie histórica mezcla modelos (Best Match: saltos en 2017 y 2025) | La magnitud (umbral, % de días fuertes) no es homogénea entre tramos | Patrón de meses, hora y dirección verificado en los 3 tramos; mejora: re-descargar con `models=era5` |
+| El token del bot de Telegram es un secreto | Si se filtra, otro puede usar el bot | Se pasa por variable de entorno (`uso-viento/.env`, fuera de git); regenerable con `/revoke` |
 | Miles de Parquet pequeños por el trigger de 10 s | Lecturas lentas o error de memoria | Compactación (2 172 → 1 archivo) |
 | Un job que empuja métricas se detiene | Grafana muestra valores congelados | Vigilar `push_time_seconds` |
 
@@ -290,7 +292,7 @@ Detalle completo en [Contratos de eventos](contratos.md).
 
 | Hito | Sesión | Entregable | Estado |
 |---|---|---|---|
-| Brief técnico-analítico | S2 | Este documento | ✅ v3 |
+| Brief técnico-analítico | S2 | Este documento | ✅ v4 |
 | Producto U1 | S5 | [Pipeline batch](u1-producto.md) | ✅ |
 | Producto U2 | S12 | [Pipeline en tiempo real](u2-producto.md) | ✅ |
 | Integración y DataOps | S13–S14 | Healthchecks, compuertas, manifiesto, hardening | 🛠️ |
@@ -318,6 +320,7 @@ Detalle completo en [Contratos de eventos](contratos.md).
 | v1 | S2 (inicio del ciclo) | Brief del equipo BIG IMPACT: dimensión precipitación |
 | v2 | Noviembre 2026 | Cambio de dimensión a viento, trabajo individual y repositorio propio |
 | v3 | Noviembre 2026 | Valor de los modelos, criterios de éxito medidos, contratos, riesgos, competencias y planificación de la U3 |
+| v4 | 15 de noviembre de 2026 | Nombre **Wayra Alerta**, aviso por Telegram, fuente declarada como *Best Match* (hallazgo de calidad de datos) y 17 años de histórico |
 
 ---
 

@@ -1,14 +1,14 @@
-# ClimateRisk Andes · Dimensión **Viento** (Juliaca) — Nayder Arce Mayta
+# Wayra Alerta · Viento en el Altiplano (Juliaca) — Nayder Arce Mayta
 
 Big Data 2026-2 · UPeU · Arquitectura **Lambda** sobre la API **Open-Meteo**
-(histórico ERA5 para la U1, viento actual cada 15 min para la U2).
+(histórico 2010–2026 para la U1, viento actual cada 15 min para la U2).
 
 ```
 U1 batch   archive-api ──► CSV ──► PySpark (Bronze→Silver→Gold Parquet/anio) ──► MLlib ráfaga de hoy
 U2 speed   forecast-api current ──► MQTT (Mosquitto propio) ──► bridge ──► Kafka viento-eventos ──► Spark Streaming
                                                          │        │                 (ventanas, watermark,
                                                          │        └► alertador ─► alerta-eventos ◄─ suscripciones
-                                                         │                                      └► notificaciones
+                                                         │                                      └► notificaciones ─► Telegram
                                                          └► kafka-exporter ─► Prometheus ◄─ Pushgateway ◄─ Spark (S9/S11)
                                                                                    └────► Grafana "Viento Juliaca"
 ```
@@ -46,25 +46,30 @@ Prometheus http://localhost:49090 · Grafana http://localhost:43000 (admin/admin
 
 ## U2 — S6 a S12 (tiempo real)
 
-Abre **4 terminales** (cada una con su log, para las capturas):
+Abre **5 terminales** además de la T1 (cada una con su log, para las capturas). El puente (T3) debe estar
+arriba antes que el productor (T4): MQTT no guarda mensajes.
 
 ```powershell
-# T1 — consumidor IoT (correr primero)
+# T2 — consumidor IoT
 docker compose -f uso-viento/compose.yml exec uso-viento python consumer_viento.py
-# T2 — puente MQTT → Kafka
+# T3 — puente MQTT → Kafka
 docker compose -f uso-viento/compose.yml exec uso-viento python bridge_mqtt_kafka.py
-# T3 — productor REAL (Open-Meteo → MQTT). Para demos de ventanas usa -e INTERVALO_S=15
-docker compose -f uso-viento/compose.yml exec uso-viento python productor_openmeteo.py
-#      el broker MQTT es el contenedor lambda26-mosquitto (test.mosquitto.org daba timeout)
-# T4 — negocio: notificaciones + alertador
+# T4 — productor REAL (Open-Meteo → MQTT). 60 s por defecto; 15 s en las demos
+docker compose -f uso-viento/compose.yml exec -e INTERVALO_S=15 uso-viento python productor_openmeteo.py
+# T5 — notificaciones (Kafka + Telegram)
 docker compose -f uso-viento/compose.yml exec uso-viento python consumer_alertas.py
+# T6 — alertador (ráfaga >= 46 km/h)
 docker compose -f uso-viento/compose.yml exec uso-viento python alertador_viento.py
 ```
+
+**Aviso por Telegram (opcional):** copia `uso-viento/.env.example` como `uso-viento/.env`, pega el token del bot
+(@BotFather) y recrea el contenedor (`docker compose -f uso-viento/compose.yml up -d`). Quien toca **Iniciar** en
+el bot recibe cada alerta. Sin token, la alerta igual se emite y se notifica en Kafka.
 
 | Sesión | Qué correr | Evidencia mínima |
 |---|---|---|
 | **S6** negocio | `python producer_suscripciones.py` · `python publicar_prueba.py viento_fuerte` (alerta completa) · `python publicar_prueba.py alerta_negocio` (malformado) · `publicar_prueba.py rafaga 300` con el consumer detenido (lag sube/baja en Kafka UI → Consumers) | Kafka UI con 2 topics, logs de productor/consumidor, contrato `alerta.notificada`, mensaje malformado sin caída |
-| **S7** IoT real | T1–T3 + `publicar_prueba.py fuera_rango` | Kafka UI `viento-eventos` 3 particiones, logs `forwarded`/`consumed`/`alerta` con datos reales, `invalid`/`fuera_rango` |
+| **S7** IoT real | T2–T4 + `publicar_prueba.py fuera_rango` | Kafka UI `viento-eventos` 3 particiones, logs `forwarded`/`consumed`/`alerta` con datos reales, `invalid`/`fuera_rango` |
 | **S8** streaming | `u2-viento/08_streaming_viento_v2.ipynb` (Run All, ~8 min) | ventanas tumbling/deslizante, tardío descartado, dedup, carpeta de checkpoint |
 | **S9** observabilidad | `09_observabilidad_viento_nayder.ipynb` + Grafana | `lastProgress`, 3 targets UP, panel lag, latencia por minuto, alertas, costos |
 | **S10** series | `10_series_tiempo_viento_nayder.ipynb` | tabla vs persistencia, split cronológico, modelo guardado, predicciones en vivo |
@@ -74,8 +79,8 @@ docker compose -f uso-viento/compose.yml exec uso-viento python alertador_viento
 **Capturas:** siempre con el reloj de Windows y tu usuario visibles, y con commits del mismo día en GitHub.
 
 ## Fuente de datos — lo que hay que decir con honestidad
-- `archive-api` = reanálisis ERA5 (~25 km); `forecast` `current` = modelo de pronóstico actualizado cada
+- `archive-api` sin `models` = *Best Match* (ERA5 + ECMWF IFS desde 2017): la serie tiene saltos en 2017 y 2025, el patrón se mantiene y la magnitud no (ver `docs/u1-producto.md`); `forecast` `current` = modelo de pronóstico actualizado cada
   15 min (en Perú es interpolado de datos horarios). **No** es un anemómetro en Juliaca.
-- Se consulta cada 60 s pero el valor cambia cada 15 min → hay lecturas repetidas: se deduplican por
+- Se consulta cada 60 s (15 s en demos) pero el valor cambia cada 15 min → hay lecturas repetidas: se deduplican por
   `(sensorId, obsTime)` en Spark y el alertador es idempotente. Es una decisión propia distinta al ejemplo del docente.
 - Límite gratuito de Open-Meteo: 10 000 llamadas/día. Con 3 puntos en 1 llamada cada 15 s → 5 760/día: OK.

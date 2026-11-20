@@ -3,7 +3,7 @@
 > Los valores marcados ⟨…⟩ salen de **tu** corrida de `01_viento_batch_nayder.ipynb` (Restart & Run All). No inventar números.
 
 ## 0. Producto
-Pipeline ETL distribuido en PySpark que toma 16 años de datos horarios de Open-Meteo (Juliaca), los
+Pipeline ETL distribuido en PySpark que toma 17 años de datos horarios (2010-01-01 → 2026-10-27, 147 456 horas) de Open-Meteo (Juliaca), los
 limpia, los agrega a nivel diario y genera una salida **Gold en Parquet particionada por año**, lista
 para BI (climatología del viento) y ML (regresión de la ráfaga máxima diaria).
 
@@ -79,7 +79,7 @@ Lectura: detecta **2 de cada 3 días fuertes** (recall 67 % vs 46 % de la persis
 - **Rumbo dominante:** suroeste (22.1 %) y oeste (19.1 %) → 41 % del viento ≥ 5 km/h viene del SO/O.
 - **Coeficientes Config B:** lo que más empuja la ráfaga de hoy es la velocidad media de ayer (+0.85 por km/h) y la ráfaga de ayer (+0.27); más humedad ayer → menos ráfaga hoy (−0.085 por %). El intercepto −184 compensa el término de presión (+0.32 × ~645 hPa).
 - **Hallazgo honesto:** la ráfaga máxima diaria es muy ruidosa: ni la persistencia (R² ≈ 0) ni los modelos explican mucho (R² 0.06). La estacionalidad sola empeora (A < persistencia) porque el periodo de test (jun 2023 → oct 2026) fue más ventoso que el histórico de entrenamiento.
-- **Hallazgo extra (RDD 2.5):** las horas con ráfaga ≥ 40 km/h suben de 63–174 por año (2010–2016) a 420–545 (2024–2025). Puede ser tendencia real o un cambio en ERA5; queda como pregunta abierta, no como conclusión.
+- **Hallazgo extra (RDD 2.5):** las horas con ráfaga ≥ 40 km/h suben de 63–174 por año (2010–2016) a 420–545 (2024–2025). **Diagnóstico (auditoría del 12-nov):** no es tendencia climática. El endpoint `/archive` sin el parámetro `models` usa *Best Match* (ERA5 + ECMWF IFS desde 2017): la velocidad media salta de 6.3 km/h (2010–16) a 9.0 (2017–24) y 7.0 (2025–26), y el % de días fuertes de 3 % a 14 % y 26 %. El **patrón** (ago–nov, pico de tarde, SO + O) se mantiene en los tres tramos; la **magnitud** (umbral 46, "10 % de días fuertes") mezcla tramos. Mejora: re-descargar con `models=era5`.
 
 ## 6b. Rúbrica del aula virtual (7 criterios × 14 %) → evidencia
 | Criterio | Dónde |

@@ -1,11 +1,10 @@
 # Levanta todo el stack en orden. Ejecutar desde la carpeta raiz del proyecto (viento\)
 #   powershell -ExecutionPolicy Bypass -File scripts\levantar_todo.ps1
 $ErrorActionPreference = "Stop"
-docker compose -f kafka/compose.yml up -d
-Start-Sleep -Seconds 10
+docker compose -f kafka/compose.yml up -d --wait   # espera a que Kafka este healthy (S14)
 powershell -ExecutionPolicy Bypass -File scripts/crear_topics.ps1
 docker compose -f uso-viento/compose.yml up -d --build
-docker compose -f obs/compose.yml up -d
+docker compose -f obs/compose.yml up -d --wait
 if (-not (Test-Path pyspark/.env)) { Copy-Item pyspark/.env.example pyspark/.env }
 docker compose -f pyspark/compose.yml -f pyspark/compose.kafka.yml up -d --build
 Write-Host ""
