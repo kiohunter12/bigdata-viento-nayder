@@ -77,7 +77,17 @@ markdown_extensions:
 
 nav:
   - Inicio: index.md
-  - Brief: brief.md
-  - Producto U1 · Batch: u1-producto.md
-  - Producto U2 · Streaming: u2-producto.md
-  - Contratos de eventos: contratos.md
+  - Instalación y ejecución: instalacion.md
+  - Uso del sistema: uso.md
+  - Arquitectura: arquitectura.md
+  - Módulos: modulos.md
+  - Datos: datos.md
+  - Pruebas y evidencias: pruebas.md
+  - Equipo y aporte individual: equipo.md
+  - Repositorio y estándares: repositorio.md
+  - Limitaciones y mejoras: limitaciones.md
+  - Más:
+      - Brief: brief.md
+      - Producto U1 · Batch: u1-producto.md
+      - Producto U2 · Streaming: u2-producto.md
+      - Contratos de eventos: contratos.md
